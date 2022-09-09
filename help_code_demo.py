@@ -174,7 +174,7 @@ class IEGM_DataSET():
         return len(self.names_list)
 
     def __getitem__(self, idx):
-        text_path = self.root_dir + self.names_list[idx].split(' ')[0]
+        text_path = os.path.join(self.root_dir, self.names_list[idx].split(' ')[0])
 
         if not os.path.isfile(text_path):
             print(text_path + 'does not exist')
@@ -271,10 +271,10 @@ class IEGM_DataSET_meta():
         query_sample = []
 
         for file in support_filelist:
-            text_path = self.root_dir + file
+            text_path = os.path.join(self.root_dir, file)
             support_sample.append(txt_to_numpy(text_path, self.size).reshape(1, self.size, 1))
         for file in query_filelist:
-            text_path = self.root_dir + file
+            text_path = os.path.join(self.root_dir, file)
             query_sample.append(txt_to_numpy(text_path, self.size).reshape(1, self.size, 1))
 
         batch = {'support_sample': np.array(support_sample),

@@ -12,6 +12,7 @@ from models.model_fc import IEGMNetFC
 from models.model_conv import IEGMNetConv
 import sys
 import collections
+import os
 
 def main():
     # Hyperparameters
@@ -33,12 +34,14 @@ def main():
     MIN_INNER_LOOP_NUM = args.min_iloopn
     OUTER_LOOP_NUM = args.oloopn
     SIZE = args.size
+    path_old_model = args.path_old_model
     path_data = args.path_data
     path_indices = args.path_indices
+    path_models = args.path_models
 
     # Instantiating NN
     if CONTINUE_TRAINING:
-        net = torch.load('./model_archive/saved_model.pkl', map_location='cpu')
+        net = torch.load(path_old_model, map_location='cpu')
     elif SELECTED_MODEL == 'conv':
         net = IEGMNetConv()
     elif SELECTED_MODEL == 'fc':
@@ -99,11 +102,6 @@ def main():
     #     pass
     # end of 测试代码
 
-
-    # Train_loss = []
-    # Train_acc = []
-    # Test_loss = []
-
     # 测试代码
     # Bench_acc = []
     # bench_data = next(iter(benchmarkloader))
@@ -119,6 +117,12 @@ def main():
     # end of 测试代码
 
     print("Start training")
+
+    if not os.path.exists(path_models):
+        os.makedirs(path_models)
+    path_best_models = os.path.join(path_models, 'best')
+    if not os.path.exists(path_best_models):
+        os.makedirs(path_best_models)
 
     Best_acc = 0.0
     for epoch in range(EPOCH_NUM):  # loop over the dataset multiple times (specify the #epoch)
@@ -183,8 +187,8 @@ def main():
             Test_acc.append((correct / total).item())
             
             if idx % 50 == 49:
-                torch.save(net, './saved_models/IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl')
-                torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
+                torch.save(net, os.path.join(path_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
+                # torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
                 net.eval()
                 bench_data = next(iter(benchmarkloader))
                 bench_sample, bench_label = bench_data['IEGM_seg'], bench_data['label']
@@ -199,131 +203,31 @@ def main():
                 print('Benchmark Acc: %.5f' % (bench_accuracy))
                 if bench_accuracy > Best_acc:
                     Best_acc = bench_accuracy
-                    torch.save(net, './saved_models/best/IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl')
-                    torch.save(net.state_dict(), './saved_models/best/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
+                    torch.save(net, os.path.join(path_best_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
+                    # torch.save(net.state_dict(), './saved_models/best/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
                 net.train()
 
-        file = open('./saved_models/loss_acc_' + str(epoch) + '_.txt', 'w')
-        file.write("Test_acc\n")
-        file.write(str(Test_acc))
-        file.write('\n\n')
-        file.write("Bench_acc\n")
-        file.write(str(Bench_acc))
-        file.write('\n\n')
-        file.close()
+        Test_acc_file = open(os.path.join(path_models, 'test_acc_' + str(epoch) + '_.txt'), 'w')
+        Test_acc_file.write(str(Test_acc))
+        Test_acc_file.write('\n\n')
+        Test_acc_file.close()
+
+        Bench_acc_file = open(os.path.join(path_models, 'bench_acc.txt'), 'a')
+        Bench_acc_file.write('epoch' + str(epoch) + ':\n')
+        Bench_acc_file.write(str(Bench_acc))
+        Bench_acc_file.write('\n\n')
+        Bench_acc_file.close()
         
-        # TO DO: MLR(beta)值调整，2022论文
         if NEW_FEATURES:
             scheduler.step()
 
     print('Finish training')
 
-    # torch.save(net, './saved_models/IEGM_net.pkl')
-    # torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict.pkl')
-
-    # file = open('./saved_models/loss_acc.txt', 'w')
-    # file.write("Train_loss\n")
-    # file.write(str(Train_loss))
-    # file.write('\n\n')
-    # file.write("Train_acc\n")
-    # file.write(str(Train_acc))
-    # file.write('\n\n')
-    # file.write("Test_loss\n")
-    # file.write(str(Test_loss))
-    # file.write('\n\n')
-    # file.write("Test_acc\n")
-    # file.write(str(Test_acc))
-    # file.write('\n\n')
-    # file.write("Bench_acc\n")
-    # file.write(str(Bench_acc))
-    # file.write('\n\n')
-
-    # print('Finish training')
-
-
-        # running_loss = 0.0
-        # correct = 0.0
-        # accuracy = 0.0
-        # i = 0
-
-        # for j, data in enumerate(trainloader, 0):
-        #     for param in net.parameters():
-        #         pass
-
-        #     inputs, labels = data['IEGM_seg'], data['label']
-        #     inputs = inputs.float().to(device)
-        #     labels = labels.to(device)
-
-        #     optimizer.zero_grad()
-        #     outputs = net(inputs)
-        #     loss = criterion(outputs, labels)
-        #     loss.backward()
-        #     optimizer.step()
-
-        #     _, predicted = torch.max(outputs.data, 1)
-        #     correct += (predicted == labels).sum()
-        #     accuracy += correct / BATCH_SIZE
-        #     correct = 0.0
-
-        #     running_loss += loss.item()
-        #     i += 1
-
-    #     print('[Epoch, Batches] is [%d, %5d] \nTrain Acc: %.5f Train loss: %.5f' %
-    #           (epoch + 1, i, accuracy / i, running_loss / i))
-
-    #     Train_loss.append(running_loss / i)
-    #     Train_acc.append((accuracy / i).item())
-
-    #     running_loss = 0.0
-    #     accuracy = 0.0
-
-    #     correct = 0.0
-    #     total = 0.0
-    #     i = 0.0
-    #     running_loss_test = 0.0
-
-    #     for data_test in testloader:
-    #         net.eval()
-    #         IEGM_test, labels_test = data_test['IEGM_seg'], data_test['label']
-    #         IEGM_test = IEGM_test.float().to(device)
-    #         labels_test = labels_test.to(device)
-    #         outputs_test = net(IEGM_test)
-    #         _, predicted_test = torch.max(outputs_test.data, 1)
-    #         total += labels_test.size(0)
-    #         correct += (predicted_test == labels_test).sum()
-
-    #         loss_test = criterion(outputs_test, labels_test)
-    #         running_loss_test += loss_test.item()
-    #         i += 1
-
-    #     print('Test Acc: %.5f Test Loss: %.5f' % (correct / total, running_loss_test / i))
-
-    #     Test_loss.append(running_loss_test / i)
-    #     Test_acc.append((correct / total).item())
-
-    # torch.save(net, './saved_models/IEGM_net.pkl')
-    # torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict.pkl')
-
-    # file = open('./saved_models/loss_acc.txt', 'w')
-    # file.write("Train_loss\n")
-    # file.write(str(Train_loss))
-    # file.write('\n\n')
-    # file.write("Train_acc\n")
-    # file.write(str(Train_acc))
-    # file.write('\n\n')
-    # file.write("Test_loss\n")
-    # file.write(str(Test_loss))
-    # file.write('\n\n')
-    # file.write("Test_acc\n")
-    # file.write(str(Test_acc))
-    # file.write('\n\n')
-
-    # print('Finish training')
-
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--cont_training', action='store_true', help='continue training on old model', default=False)
+    argparser.add_argument('--path_old_model', type=str, help='path of old model for continuous training', default='./model_archive/saved_model.pkl')
     argparser.add_argument('--selected_model', type=str, help='FOR NEW TRAINING ONLY: select fc or conv model', default='conv')
     argparser.add_argument('--new_features', action='store_true', help='activate new task generating mechanism and dynamic learning rate in paper 2022', default=False)
     argparser.add_argument('--epochn', type=int, help='epoch number', default=1)   # 2021：1   2022：50
@@ -343,8 +247,9 @@ if __name__ == '__main__':
     argparser.add_argument('--device', type=str, help='current device: cuda or cpu', default='cpu')
     argparser.add_argument('--cuda', type=int, help='cuda device id, no sense when current device is cpu', default=0)
     argparser.add_argument('--size', type=int, default=1250)
-    argparser.add_argument('--path_data', type=str, default='./tinyml_contest_data_training/')
+    argparser.add_argument('--path_data', type=str, default='./tinyml_contest_data_training')
     argparser.add_argument('--path_indices', type=str, default='./data_indices')
+    argparser.add_argument('--path_models', type=str, default='./saved_models')
 
     args = argparser.parse_args()
 
