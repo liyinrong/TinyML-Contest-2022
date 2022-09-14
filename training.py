@@ -136,10 +136,9 @@ def main():
             inner_loop_num = max(inner_loop_num - idx % PRESET_UPDATING_STRIDE, MIN_INNER_LOOP_NUM)
 
             batch_loss = []
+            batch_bn_params = []
             correct = 0.0
             total = 0.0
-
-            bn_params = net.bn_parameters()
 
             for b in range(BATCH_SIZE):
                 support_sample = batch['support_sample'][b]
@@ -153,6 +152,7 @@ def main():
                 query_label = query_label.long().to(device)
 
                 net_params = collections.OrderedDict(net.named_parameters())
+                bn_params = net.bn_parameters()
                 for n in range(inner_loop_num):
                     training_outputs = net.functional_forward(support_sample, net_params, bn_params)
                     training_loss = criterion(training_outputs, support_label)
@@ -172,6 +172,7 @@ def main():
                 # end of 测试代码
                 
                 batch_loss.append(testing_loss)
+                batch_bn_params.append(bn_params)
 
                 _, prediction = torch.max(testing_outputs.data, 1)
                 correct += (prediction == query_label).sum()
@@ -181,7 +182,11 @@ def main():
             avr_loss = torch.stack(batch_loss).mean()
             avr_loss.backward()
             optimizer.step()
-            net.load_bn_parameters(bn_params)
+            avr_bn_params = {}
+            for subdict in batch_bn_params:
+                avr_bn_params.update((k, avr_bn_params.get(k, 0) + v) for k, v in subdict.items())
+            avr_bn_params.update((k, v/BATCH_SIZE) for k, v in avr_bn_params.items())
+            net.load_bn_parameters(avr_bn_params)
 
             print('Test Acc: %.5f' % (correct / total))
             Test_acc.append((correct / total).item())
