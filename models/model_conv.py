@@ -1,8 +1,9 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class IEGMNetConv(nn.Module):
-    def __init__(self):
+    def __init__(self, qat=False):
         super(IEGMNetConv, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6, 1), stride=(2,1), padding=0),
@@ -45,10 +46,19 @@ class IEGMNetConv(nn.Module):
             nn.ReLU(True),
         )
 
+        self.qat = qat
+        if self.qat:
+            self.quant = torch.quantization.QuantStub()
+            self.dequant = torch.quantization.DeQuantStub()
+
 
     def forward(self, input):
+        if self.qat:
+            conv1_input = self.quant(input)
+        else:
+            conv1_input = input
 
-        conv1_output = self.conv1(input)
+        conv1_output = self.conv1(conv1_input)
         conv2_output = self.conv2(conv1_output)
         conv3_output = self.conv3(conv2_output)
         conv4_output = self.conv4(conv3_output)
@@ -59,10 +69,20 @@ class IEGMNetConv(nn.Module):
         conv6_output = self.conv6(conv5_output)
         conv7_output = self.conv7(conv6_output)
         conv7_output = conv7_output.view(-1,2)
-        return conv7_output
+
+        if self.qat:
+            output = self.dequant(conv7_output)
+        else:
+            output = conv7_output
+        return output
 
     def functional_forward(self, input, params, bn_params):
-        conv1_output = F.conv2d(input, weight=params[f'conv1.0.weight'], bias=params[f'conv1.0.bias'], stride=(2,1), padding=0)
+        if self.qat:
+            conv1_input = self.quant(input)
+        else:
+            conv1_input = input
+
+        conv1_output = F.conv2d(conv1_input, weight=params[f'conv1.0.weight'], bias=params[f'conv1.0.bias'], stride=(2,1), padding=0)
         conv1_output = F.batch_norm(conv1_output, running_mean=bn_params[f'conv1.1.running_mean'], running_var=bn_params[f'conv1.1.running_var'],
                                     weight=params[f'conv1.1.weight'], bias=params[f'conv1.1.bias'], training=True)
         conv1_output = F.relu(conv1_output, True)
@@ -97,7 +117,11 @@ class IEGMNetConv(nn.Module):
         conv7_output = F.relu(conv7_output, True)
         conv7_output = conv7_output.view(-1,2)
 
-        return conv7_output
+        if self.qat:
+            output = self.dequant(conv7_output)
+        else:
+            output = conv7_output
+        return output
 
     def bn_parameters(self):
         bn_params = {}
