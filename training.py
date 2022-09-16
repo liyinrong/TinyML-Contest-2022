@@ -19,7 +19,8 @@ def main():
     CONTINUE_TRAINING = args.cont_training
     SELECTED_MODEL = args.selected_model
     NEW_FEATURES = args.new_features
-    QAT = args.qat
+    # QUAN = args.quan and SELECTED_MODEL=='conv'
+    QUAN = True
     EPOCH_NUM = args.epochn
     LR = args.lr
     MLR = args.mlr
@@ -44,7 +45,7 @@ def main():
     if CONTINUE_TRAINING:
         net = torch.load(path_old_model, map_location='cpu')
     elif SELECTED_MODEL == 'conv':
-        net = IEGMNetConv(QAT)
+        net = IEGMNetConv(QUAN)
     elif SELECTED_MODEL == 'fc':
         net = IEGMNetFC()
     else:
@@ -53,10 +54,16 @@ def main():
 
     net.train()
     net = net.float().to(device)
-    if QAT:
+    if QUAN:
         net.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+        # torch.quantization.fuse_modules(net, ['conv1.0', 'conv1.1', 'conv1.2'], inplace=True)
         # TO DO: Layer fusion
-        torch.quantization.prepare_qat(net)
+        torch.quantization.prepare_qat(net, inplace=True)
+    
+    # 测试代码
+    # net_int8 = torch.quantization.convert(net)
+    # torch.save(net_int8, os.path.join(path_models, 'IEGM_net_test.pkl'))
+    # end of 测试代码
 
     # 测试代码
     # _para = net.parameters()
@@ -198,16 +205,20 @@ def main():
             
             if idx % 50 == 49:
                 net.eval()
-                torch.save(net, os.path.join(path_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
                 bench_data = next(iter(benchmarkloader))
                 bench_sample, bench_label = bench_data['IEGM_seg'], bench_data['label']
                 bench_sample = bench_sample.float().to(device)
                 bench_label = bench_label.to(device)
-                if QAT:
-                    net_int8 = torch.quantization.convert(net)
+                if QUAN:
+                    net_int8 = torch.quantization.convert(net, inplace=False)
                     torch.save(net_int8, os.path.join(path_models, 'IEGM_net_int8_' + str(epoch) + '_' + str(idx) + '.pkl'))
                     benchmark_outputs = net_int8(bench_sample)
+                    # 测试代码
+                    # dummy_input = torch.randn(1, 1, SIZE, 1)
+                    # torch.onnx.export(net_int8, dummy_input, os.path.join(path_models, 'IEGM_net_int8_' + str(epoch) + '_' + str(idx) + '.onnx'), verbose=True)
+                    # end of 测试代码
                 else:
+                    torch.save(net, os.path.join(path_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
                     benchmark_outputs = net(bench_sample)
                 _, bench_pred = torch.max(benchmark_outputs.data, 1)
                 bench_correct = (bench_pred == bench_label).sum()
@@ -217,9 +228,10 @@ def main():
                 print('Benchmark Acc: %.5f' % (bench_accuracy))
                 if bench_accuracy > Best_acc:
                     Best_acc = bench_accuracy
-                    torch.save(net, os.path.join(path_best_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
-                    if QAT:
+                    if QUAN:
                         torch.save(net_int8, os.path.join(path_best_models, 'IEGM_net_int8_' + str(epoch) + '_' + str(idx) + '.pkl'))
+                    else:
+                        torch.save(net, os.path.join(path_best_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
                     # torch.save(net.state_dict(), './saved_models/best/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
                 net.train()
 
@@ -246,7 +258,7 @@ if __name__ == '__main__':
     argparser.add_argument('--path_old_model', type=str, help='path of old model for continuous training', default='./model_archive/saved_model.pkl')
     argparser.add_argument('--selected_model', type=str, help='FOR NEW TRAINING ONLY: select fc or conv model', default='conv')
     argparser.add_argument('--new_features', action='store_true', help='activate new task generating mechanism and dynamic learning rate in paper 2022', default=False)
-    argparser.add_argument('--qat', action='store_true', help='activate QAT for model quantization', default=False)
+    argparser.add_argument('--quan', action='store_true', help='activate model quantization', default=False)
     argparser.add_argument('--epochn', type=int, help='epoch number', default=1)   # 2021：1   2022：50
     argparser.add_argument('--lr', type=float, help='learning rate aka alpha in the paper', default=0.0005)
     argparser.add_argument('--mlr', type=float, help='meta learning rate aka beta in the paper', default=0.0002)    #2021：0.0002   2022：0.0001
