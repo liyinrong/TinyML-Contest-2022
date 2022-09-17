@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.quantization
 
 class IEGMNetConv(nn.Module):
     def __init__(self):
@@ -53,7 +54,7 @@ class IEGMNetConv(nn.Module):
         conv3_output = self.conv3(conv2_output)
         conv4_output = self.conv4(conv3_output)
         conv5_output = self.conv5(conv4_output)
-        conv5_output = conv5_output.view(-1,740,1,1)
+        conv5_output = conv5_output.reshape(-1,740,1,1)
         # conv5_output = conv5_output.reshape(conv5_output.shape[0],740,1,1)
 
         conv6_output = self.conv6(conv5_output)
@@ -86,7 +87,7 @@ class IEGMNetConv(nn.Module):
         conv5_output = F.batch_norm(conv5_output, running_mean=bn_params[f'conv5.1.running_mean'], running_var=bn_params[f'conv5.1.running_var'],
                                     weight=params[f'conv5.1.weight'], bias=params[f'conv5.1.bias'], training=True)
         conv5_output = F.relu(conv5_output, True)
-        conv5_output = conv5_output.view(-1,740,1,1)
+        conv5_output = conv5_output.reshape(-1,740,1,1)
         # conv5_output = conv5_output.reshape(conv5_output.shape[0],740,1,1)
         
         conv6_output = F.dropout(conv5_output, 0.5)
@@ -117,3 +118,15 @@ class IEGMNetConv(nn.Module):
 
     def load_bn_parameters(self, bn_params):
         self.load_state_dict(bn_params, strict=False)
+
+    def fuse_layers(self):
+        fusion_list = []
+        fusion_list.append(['conv1.0', 'conv1.1', 'conv1.2'])
+        fusion_list.append(['conv2.0', 'conv2.1', 'conv2.2'])
+        fusion_list.append(['conv3.0', 'conv3.1', 'conv3.2'])
+        fusion_list.append(['conv4.0', 'conv4.1', 'conv4.2'])
+        fusion_list.append(['conv5.0', 'conv5.1', 'conv5.2'])
+        fusion_list.append(['conv6.1', 'conv6.2'])
+        fusion_list.append(['conv7.0', 'conv7.1'])
+        torch.quantization.fuse_modules(self, fusion_list, inplace=True)
+        

@@ -192,7 +192,7 @@ def main():
             Test_acc.append((correct / total).item())
             
             if idx % 50 == 49:
-                torch.save(net, os.path.join(path_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
+                torch.save(net, os.path.join(path_models, 'meta_' + str(epoch) + '_' + str(idx) + '.pkl'))
                 # torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
                 net.eval()
                 bench_data = next(iter(benchmarkloader))
@@ -208,16 +208,16 @@ def main():
                 print('Benchmark Acc: %.5f' % (bench_accuracy))
                 if bench_accuracy > Best_acc:
                     Best_acc = bench_accuracy
-                    torch.save(net, os.path.join(path_best_models, 'IEGM_net_' + str(epoch) + '_' + str(idx) + '.pkl'))
+                    torch.save(net, os.path.join(path_best_models, 'meta_' + str(epoch) + '_' + str(idx) + '.pkl'))
                     # torch.save(net.state_dict(), './saved_models/best/IEGM_net_state_dict_' + str(epoch) + '_' + str(idx) + '.pkl')
                 net.train()
 
-        Test_acc_file = open(os.path.join(path_models, 'test_acc_' + str(epoch) + '_.txt'), 'w')
+        Test_acc_file = open(os.path.join(path_models, 'meta_test_acc_' + str(epoch) + '_.txt'), 'w')
         Test_acc_file.write(str(Test_acc))
         Test_acc_file.write('\n\n')
         Test_acc_file.close()
 
-        Bench_acc_file = open(os.path.join(path_models, 'bench_acc.txt'), 'a')
+        Bench_acc_file = open(os.path.join(path_models, 'meta_bench_acc.txt'), 'a')
         Bench_acc_file.write('epoch' + str(epoch) + ':\n')
         Bench_acc_file.write(str(Bench_acc))
         Bench_acc_file.write('\n\n')
