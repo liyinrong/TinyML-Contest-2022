@@ -4,46 +4,46 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from help_code_demo import ToTensor, IEGM_DataSET
+from help_code_demo import ToTensor, IEGM_DataSET, IEGM_DataSET_1D
 from models.model_fc import IEGMNetFC
 from models.model_conv import IEGMNetConv
-from models.model_qat import IEGMNetQ
-import os
+from models.model_lstm import IEGMNetLSTM
 import sys
+import os
+import collections
 
 def main():
     # Hyperparameters
-    dev_name = args.device
+    SELECTED_MODEL = args.selected_model
     BATCH_SIZE = args.batchsz
     BATCH_SIZE_TEST = args.batchsz
     LR = args.lr
     EPOCH = args.epoch
     SIZE = args.size
-
-    path_meta_model = args.path_meta_model
     path_data = args.path_data
     path_indices = args.path_indices
     path_models = args.path_models
 
     # Instantiating NN
-    if dev_name == 'cpu':
-        net_meta = torch.load(path_meta_model, map_location='cpu')
-    elif dev_name == 'cuda':
-        net_meta = torch.load(path_meta_model, map_location="cuda:" + str(args.cuda))
+    if SELECTED_MODEL == 'conv':
+        net = IEGMNetConv()
+    elif SELECTED_MODEL == 'fc':
+        net = IEGMNetFC()
+    elif SELECTED_MODEL == 'lstm':
+        net = IEGMNetLSTM()
+    else:
+        print("Invalid selected model.")
+        sys.exit()
 
-    net = IEGMNetQ(net_meta)
-    net = net.float().to(device)
-    net.eval()
-    net.fuse_layers()
     net.train()
-    # net.qconfig = torch.quantization.qconfig.QConfig(
-    #     activation=torch.quantization.observer.MinMaxObserver.with_args(dtype=torch.quint8,quant_min=0, quant_max=255, reduce_range=False),
-    #     weight=torch.quantization.observer.MinMaxObserver.with_args(dtype=torch.qint8,quant_min=-128, quant_max=127, qscheme=torch.per_tensor_symmetric))
-    net.qconfig = torch.quantization.get_default_qconfig('fbgemm')
-    torch.quantization.prepare_qat(net, inplace=True)
+    net = net.float().to(device)
+    ttt = collections.OrderedDict(net.named_parameters())
+    # torch.save(net, 'test.pkl')
+    # dummy_input = torch.randn(1, 1, 1250)
+    # test_output = net(dummy_input)
 
     # Start dataset loading
-    trainset = IEGM_DataSET(root_dir=path_data,
+    trainset = IEGM_DataSET_1D(root_dir=path_data,
                             indice_dir=path_indices,
                             mode='train',
                             size=SIZE,
@@ -51,7 +51,7 @@ def main():
 
     trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-    testset = IEGM_DataSET(root_dir=path_data,
+    testset = IEGM_DataSET_1D(root_dir=path_data,
                            indice_dir=path_indices,
                            mode='test',
                            size=SIZE,
@@ -74,25 +74,13 @@ def main():
 
     if not os.path.exists(path_models):
         os.makedirs(path_models)
-    path_best_models = os.path.join(path_models, 'best')
-    if not os.path.exists(path_best_models):
-        os.makedirs(path_best_models)
 
-    dummy_input = torch.randn(1, 1, SIZE, 1)
-    
-    # 测试代码
-    # net.eval()
-    # net_int8 = torch.quantization.convert(net, inplace=False)
-    # torch.onnx.export(net_int8, dummy_input, os.path.join(path_models, 'test.onnx'), verbose=True)
-    # end of 测试代码
-
-    Best_acc = 0.0
     for epoch in range(epoch_num):  # loop over the dataset multiple times (specify the #epoch)
-
         running_loss = 0.0
         correct = 0.0
         accuracy = 0.0
         i = 0
+        net.train()
         for j, data in enumerate(trainloader, 0):
             inputs, labels = data['IEGM_seg'], data['label']
             inputs = inputs.float().to(device)
@@ -125,17 +113,12 @@ def main():
         total = 0.0
         i = 0.0
         running_loss_test = 0.0
-
         net.eval()
-        net_int8 = torch.quantization.convert(net, inplace=False)
-        # torch.save(net_int8, os.path.join(path_models, 'quan_' + str(epoch) + '.pkl'))
-        torch.onnx.export(net_int8, dummy_input, os.path.join(path_models, 'quan_' + str(epoch) + '.onnx'), verbose=True)
-
         for data_test in testloader:
             IEGM_test, labels_test = data_test['IEGM_seg'], data_test['label']
             IEGM_test = IEGM_test.float().to(device)
             labels_test = labels_test.to(device)
-            outputs_test = net_int8(IEGM_test)
+            outputs_test = net(IEGM_test)
             _, predicted_test = torch.max(outputs_test.data, 1)
             total += labels_test.size(0)
             correct += (predicted_test == labels_test).sum()
@@ -148,12 +131,11 @@ def main():
 
         Test_loss.append(running_loss_test / i)
         Test_acc.append((correct / total).item())
-        if (correct / total) > Best_acc:
-            # torch.save(net_int8, os.path.join(path_best_models, 'quan_' + str(epoch) + '.pkl'))
-            torch.onnx.export(net_int8, dummy_input, os.path.join(path_best_models, 'quan_' + str(epoch) + '.onnx'), verbose=True)
-        net.train()
 
-    file = open('./saved_models/quan_loss_acc.txt', 'w')
+        torch.save(net, os.path.join(path_models, str(epoch) + '.pkl'))
+        # torch.save(net.state_dict(), './saved_models/IEGM_net_state_dict.pkl')
+
+    file = open('./saved_models/loss_acc.txt', 'w')
     file.write("Train_loss\n")
     file.write(str(Train_loss))
     file.write('\n\n')
@@ -172,14 +154,14 @@ def main():
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--path_meta_model', type=str, help='path of meta-learning model for QAT', default='./model_archive/saved_model.pkl')
-    argparser.add_argument('--epoch', type=int, help='epoch number', default=7)
-    argparser.add_argument('--lr', type=float, help='learning rate', default=0.0001)
+    argparser.add_argument('--selected_model', type=str, help='FOR NEW TRAINING ONLY: select fc or conv model', default='lstm')
+    argparser.add_argument('--epoch', type=int, help='epoch number', default=50)
+    argparser.add_argument('--lr', type=float, help='learning rate', default=0.0002)
     argparser.add_argument('--batchsz', type=int, help='total batchsz for traindb', default=32)
     argparser.add_argument('--device', type=str, help='current device: cuda or cpu', default='cpu')
     argparser.add_argument('--cuda', type=int, default=0)
     argparser.add_argument('--size', type=int, default=1250)
-    argparser.add_argument('--path_data', type=str, default='./tinyml_contest_data_training')
+    argparser.add_argument('--path_data', type=str, default='./tinyml_contest_data_training/')
     argparser.add_argument('--path_indices', type=str, default='./data_indices')
     argparser.add_argument('--path_models', type=str, default='./saved_models')
 
