@@ -6,43 +6,43 @@ class IEGMNetConv(nn.Module):
     def __init__(self):
         super(IEGMNetConv, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6, 1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(4,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(3, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True),
         )
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=5, kernel_size=(5, 1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=3, out_channels=5, kernel_size=(5,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(5, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True),
         )
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(5,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(10, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True),
         )
 
         self.conv4 = nn.Sequential(
-            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=(4,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True),
         )
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=20, out_channels=20, kernel_size=(4, 1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=20, out_channels=20, kernel_size=(5,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True),
         )
 
         self.conv6 = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Conv2d(in_channels=740, out_channels=10, kernel_size=(1, 1), stride=(1,1), padding=0),
+            nn.Conv2d(in_channels=720, out_channels=10, kernel_size=(1,1), stride=(1,1), padding=0),
             nn.ReLU(True),
         )
 
         self.conv7 = nn.Sequential(
-            nn.Conv2d(in_channels=10, out_channels=2, kernel_size=(1, 1), stride=(1,1), padding=0),
+            nn.Conv2d(in_channels=10, out_channels=2, kernel_size=(1,1), stride=(1,1), padding=0),
             nn.ReLU(True),
         )
 
@@ -54,8 +54,7 @@ class IEGMNetConv(nn.Module):
         conv3_output = self.conv3(conv2_output)
         conv4_output = self.conv4(conv3_output)
         conv5_output = self.conv5(conv4_output)
-        conv5_output = conv5_output.reshape(-1,740,1,1)
-        # conv5_output = conv5_output.reshape(conv5_output.shape[0],740,1,1)
+        conv5_output = conv5_output.reshape(-1,720,1,1)
 
         conv6_output = self.conv6(conv5_output)
         conv7_output = self.conv7(conv6_output)
@@ -87,8 +86,7 @@ class IEGMNetConv(nn.Module):
         conv5_output = F.batch_norm(conv5_output, running_mean=bn_params[f'conv5.1.running_mean'], running_var=bn_params[f'conv5.1.running_var'],
                                     weight=params[f'conv5.1.weight'], bias=params[f'conv5.1.bias'], training=True)
         conv5_output = F.relu(conv5_output, True)
-        conv5_output = conv5_output.reshape(-1,740,1,1)
-        # conv5_output = conv5_output.reshape(conv5_output.shape[0],740,1,1)
+        conv5_output = conv5_output.reshape(-1,720,1,1)
         
         conv6_output = F.dropout(conv5_output, 0.5)
         conv6_output = F.conv2d(conv6_output, weight=params[f'conv6.1.weight'], bias=params[f'conv6.1.bias'], stride=(1,1), padding=0)

@@ -6,7 +6,7 @@ class IEGMNetFC(nn.Module):
     def __init__(self):
         super(IEGMNetFC, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(6,1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(4,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(3, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True)
         )
@@ -18,7 +18,7 @@ class IEGMNetFC(nn.Module):
         )
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(4,1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=5, out_channels=10, kernel_size=(5,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(10, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True)
         )
@@ -30,7 +30,7 @@ class IEGMNetFC(nn.Module):
         )
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=20, out_channels=20, kernel_size=(4,1), stride=(2,1), padding=0),
+            nn.Conv2d(in_channels=20, out_channels=20, kernel_size=(5,1), stride=(2,1), padding=0),
             nn.BatchNorm2d(20, affine=True, track_running_stats=True, eps=1e-5, momentum=0.1),
             nn.ReLU(True)
         )
@@ -39,7 +39,7 @@ class IEGMNetFC(nn.Module):
 
         self.fc1 = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(in_features=740, out_features=10),
+            nn.Linear(in_features=720, out_features=10),
             nn.ReLU(True)
         )
         self.fc2 = nn.Sequential(

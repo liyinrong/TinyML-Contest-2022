@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from help_code_demo import ToTensor, IEGM_DataSET, IEGM_DataSET_1D
+from help_code_demo import ToTensor, IEGM_DataSET
 from models.model_fc import IEGMNetFC
 from models.model_conv import IEGMNetConv
 from models.model_lstm import IEGMNetLSTM
@@ -37,13 +37,9 @@ def main():
 
     net.train()
     net = net.float().to(device)
-    ttt = collections.OrderedDict(net.named_parameters())
-    # torch.save(net, 'test.pkl')
-    # dummy_input = torch.randn(1, 1, 1250)
-    # test_output = net(dummy_input)
 
     # Start dataset loading
-    trainset = IEGM_DataSET_1D(root_dir=path_data,
+    trainset = IEGM_DataSET(root_dir=path_data,
                             indice_dir=path_indices,
                             mode='train',
                             size=SIZE,
@@ -51,7 +47,7 @@ def main():
 
     trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-    testset = IEGM_DataSET_1D(root_dir=path_data,
+    testset = IEGM_DataSET(root_dir=path_data,
                            indice_dir=path_indices,
                            mode='test',
                            size=SIZE,

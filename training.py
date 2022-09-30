@@ -89,11 +89,9 @@ def main():
     inner_loop_num = INNER_LOOP_NUM
     criterion = nn.CrossEntropyLoss()
 
+    optimizer = optim.Adam(net.parameters(), lr=MLR)
     if NEW_FEATURES:
-        optimizer = optim.SGD(net.parameters(), lr=MLR)
-        scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=MLR, max_lr=MAX_MLR, step_size_up=MLR_UPDATE_HCYCLE, mode="triangular2")
-    else:
-        optimizer = optim.Adam(net.parameters(), lr=MLR)
+        scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=MLR, max_lr=MAX_MLR, step_size_up=MLR_UPDATE_HCYCLE, mode="triangular2", cycle_momentum=False)
 
     # 测试代码
     # for epoch in range(48):
@@ -241,7 +239,7 @@ if __name__ == '__main__':
     argparser.add_argument('--mlr_update_hcycle', type=int, help='number of epoch required to update mlr for half a cycle, no sense when new_feature is not activated', default=16)
     argparser.add_argument('--max_mlr', type=float, help='max meta-learning rate in cyclical mechanism, no sense when new_features is not activated', default=0.0005)
     argparser.add_argument('--batchsz', type=int, help='number of tasks in a single batch aka B in the paper', default=8)
-    argparser.add_argument('--benchsz', type=int, help='size of benchmark', default=2000)
+    argparser.add_argument('--benchsz', type=int, help='size of benchmark', default=5625)
     argparser.add_argument('--patientn', type=int, help='patient number of each set aka N in the paper', default=8)
     argparser.add_argument('--sptsampn', type=int, help='sample number of each patient in support set aka p in the paper', default=4)
     argparser.add_argument('--qrysampn', type=int, help='sample number of each patient in query set aka n-p in the paper', default=4)   #2021：4    2022：6
