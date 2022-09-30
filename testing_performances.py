@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 from copy import deepcopy
 import torchvision.transforms as transforms
+import sys
 
 from help_code_demo import ToTensor, IEGM_DataSET, stats_report
 
@@ -26,10 +27,10 @@ def main():
     stats_file = open(path_records + 'seg_stat.txt', 'w')
 
     # load trained network
-    net = torch.load(path_net + 'IEGM_net.pkl', map_location='cuda:0')
+    net = torch.load(path_net + 'IEGM_net.pkl', map_location=MAP_LOCATION)
     net.eval()
-    net.cuda()
-    device = torch.device('cuda:0')
+    if dev_name == 'cuda':
+        net.cuda()
 
     testset = IEGM_DataSET(root_dir=path_data,
                            indice_dir=path_indices,
@@ -71,17 +72,27 @@ def main():
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
+    argparser.add_argument('--device', type=str, default='cpu')
     argparser.add_argument('--cuda', type=int, default=0)
     argparser.add_argument('--size', type=int, default=1250)
-    argparser.add_argument('--path_data', type=str, default='H:/Date_Experiment/data_IEGMdb_ICCAD_Contest/segments-R250'
-                                                            '-BPF15_55-Noise/tinyml_contest_data_training/')
+    argparser.add_argument('--path_data', type=str, default='./tinyml_contest_data_training/')
     argparser.add_argument('--path_net', type=str, default='./saved_models/')
     argparser.add_argument('--path_record', type=str, default='./records/')
     argparser.add_argument('--path_indices', type=str, default='./data_indices/')
 
     args = argparser.parse_args()
 
-    device = torch.device("cuda:" + str(args.cuda))
+    dev_name = args.device
+    if dev_name == 'cpu':
+        device = torch.device('cpu')
+        MAP_LOCATION = 'cpu'
+    elif dev_name == 'cuda':
+        device = torch.device("cuda:" + str(args.cuda))
+        MAP_LOCATION = "cuda:" + str(args.cuda)
+    else:
+        print("Invalid current device.")
+        sys.exit()
+
     print("device is --------------", device)
 
     main()

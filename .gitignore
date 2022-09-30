@@ -2,3 +2,4 @@ model_archive/
 saved_models/
 tinyml_contest_data_training/
 __pycache__/
+records/
