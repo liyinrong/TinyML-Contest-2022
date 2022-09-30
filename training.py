@@ -89,9 +89,11 @@ def main():
     inner_loop_num = INNER_LOOP_NUM
     criterion = nn.CrossEntropyLoss()
 
-    optimizer = optim.Adam(net.parameters(), lr=MLR)
     if NEW_FEATURES:
-        scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=MLR, max_lr=MAX_MLR, step_size_up=MLR_UPDATE_HCYCLE, mode="triangular2", cycle_momentum=False)
+        optimizer = optim.SGD(net.parameters(), lr=MLR)
+        scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=MLR, max_lr=MAX_MLR, step_size_up=MLR_UPDATE_HCYCLE, mode="triangular2")
+    else:
+        optimizer = optim.Adam(net.parameters(), lr=MLR)
 
     # 测试代码
     # for epoch in range(48):
